@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# uv
+# (uv.lock IS committed for reproducibility; see below)
+
+# Compiled C++ artifacts
+bin/
+cpp/bin/
+dern/bin/
+build/
+*.o
+
+# Large, regenerable computational artifacts
+# (see scripts/ and examples/ to reproduce these)
+*.targets.g6
+*.checkpoint.json
+*.checkpoint.*.g6
+
+# Full result dumps for large orders (regenerable; small curated samples live in data/)
+/10test.csv
+/11test.csv
+
+# Local-only material kept out of the published repository
+# (thesis, result-bearing fixtures/samples, and any private notes)
+/private/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
