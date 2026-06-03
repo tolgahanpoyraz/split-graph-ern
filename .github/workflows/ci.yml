@@ -10,17 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install nauty (tools + headers)
+      # Ubuntu's nauty packaging is inconsistent across releases (no dev package
+      # on noble), so build nauty from source. This yields the gtools with plain
+      # names (geng, labelg, ...) plus nauty.h and the static library.
+      - name: Build and install nauty
         run: |
+          set -eux
           sudo apt-get update
-          sudo apt-get install -y nauty libnauty2-dev
-          # Debian/Ubuntu prefix the binaries (nauty-geng, ...); expose plain names.
-          for t in geng labelg shortg genbg; do
-            if command -v "nauty-$t" >/dev/null; then
-              sudo ln -sf "$(command -v "nauty-$t")" "/usr/local/bin/$t"
-            fi
-          done
-          command -v geng labelg shortg genbg
+          sudo apt-get install -y build-essential
+          ver=nauty2_8_8
+          curl -fsSL "https://pallini.di.uniroma1.it/${ver}.tar.gz" -o nauty.tar.gz
+          tar xzf nauty.tar.gz
+          cd "$ver"
+          ./configure
+          make -j"$(nproc)"
+          sudo install -m 0755 geng genbg labelg shortg /usr/local/bin/
+          sudo cp ./*.h /usr/local/include/
+          sudo install -m 0644 nauty.a /usr/local/lib/libnauty.a
+          sudo ranlib /usr/local/lib/libnauty.a
+          command -v geng genbg labelg shortg
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -30,10 +38,12 @@ jobs:
         run: uv sync
 
       - name: Build C++ tools
-        run: |
-          NAUTY_H="$(find /usr/include -name nauty.h 2>/dev/null | head -1)"
-          echo "nauty.h: ${NAUTY_H:-not found}"
-          make -C cpp NAUTY_CFLAGS="-I$(dirname "$NAUTY_H")" NAUTY_LIBS="-lnauty"
+        # nauty.a is non-PIC, so link the dern executable as non-PIE.
+        run: >
+          make -C cpp
+          CXXFLAGS="-O2 -Wall -Wextra -std=c++20 -no-pie"
+          NAUTY_CFLAGS="-I/usr/local/include"
+          NAUTY_LIBS="-L/usr/local/lib -lnauty"
 
       - name: Lint (ruff)
         run: uv run ruff check .
